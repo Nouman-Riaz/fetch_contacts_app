@@ -1,6 +1,6 @@
-import { Text, StyleSheet, View, FlatList, Platform,PermissionsAndroid, TextInput, TouchableOpacity, Image, Alert, Pressable, Linking } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { request, PERMISSIONS } from 'react-native-permissions';
+import { Text, StyleSheet, View, FlatList, Platform, TextInput, TouchableOpacity, Image, Alert, Pressable, Linking } from 'react-native'
+import React, { useState } from 'react'
+import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import Contacts from 'react-native-contacts';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
@@ -33,79 +33,85 @@ const AppPro = () => {
     //             console.error('Permission error: ', error.message);
     //         });
     // }
-    //const Fetch = () => {
-        const requestContactsPermission = async () => {
-            try {
-                if (Platform.OS === 'android') {
-                    const granted = await PermissionsAndroid.request(
-                        PermissionsAndroid.PERMISSIONS.READ_CONTACTS,
-                        // {
-                        //     title: 'Contacts',
-                        //     message: 'This app would like to view your contacts.',
-                        //     buttonPositive: 'Please accept permissions',
-                        // }
-                    );
-                    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-                        console.log('Contacts permission granted');
-                        Contacts.getAll()
-                            .then((contacts) => {
-                                console.log(contacts);
-                                setContacts(contacts);
-
-                            })
-                            .catch((e) => {
-                                console.log(e.message);
-                            });
-                    } else {
-                        console.log('Contacts permission denied');
-                        Alert.alert(
-                            'Permission Denied',
-                            'Contacts permission is required for the app to function properly. Please grant the permission.',
-                            [
-                                {
-                                    text: 'Go to App Settings',
-                                    onPress: () => {
-                                        Linking.openSettings();
-                                        
-                                    },
-                                },
-                                {
-                                    text: 'Cancel',
-                                    onPress: () => console.log('Cancel Pressed'),
-                                    style: 'cancel',
-                                },
-                            ],
-                            { cancelable: false }
-                        );
-                    }
-                } else {
-                    // For iOS or other platforms, you might handle permissions differently
-                    console.log('Contacts permission granted for iOS or other platforms');
-                    // Fetch contacts here
+    const requestContactsPermission = async () => {
+        try {
+            const permissionType = Platform.OS === 'android' ? PERMISSIONS.ANDROID.READ_CONTACTS : PERMISSIONS.IOS.CONTACTS;
+            const result = await request(
+                permissionType,
+                // {
+                //     title: 'Contacts',
+                //     message: 'This app would like to view your contacts.',
+                //     buttonPositive: 'Please accept permissions',
+                // }
+            );
+            console.log(result);
+                if (result === RESULTS.GRANTED) {
+                    console.log('Contacts permission granted');
                     Contacts.getAll()
                         .then((contacts) => {
                             console.log(contacts);
+                            setContacts(contacts);
                         })
                         .catch((e) => {
                             console.log(e.message);
                         });
+                } else if (result === RESULTS.DENIED) {
+                    console.log('Contacts permission denied');
+                    Alert.alert(
+                        'Permission Denied',
+                        'Contacts permission is required for the app to function properly. Please grant the permission.',
+                        [
+                            {
+                                text: 'Go to App Settings',
+                                onPress: () => {
+                                    Linking.openSettings();
+                                },
+                            },
+                            {
+                                text: 'Cancel',
+                                onPress: () => console.log('Cancel Pressed'),
+                                style: 'cancel',
+                            },
+                        ],
+                        { cancelable: false }
+                    );
+                } 
+                else if (result === RESULTS.BLOCKED) {
+                    console.log('Contacts permission BLOCKED');
+                    Alert.alert(
+                        'Permission Blocked',
+                        'Contacts permission is required for the app to function properly. Please grant the permission.',
+                        [
+                            {
+                                text: 'Go to App Settings',
+                                onPress: () => {
+                                    Linking.openSettings();
+                                },
+                            },
+                            {
+                                text: 'Cancel',
+                                onPress: () => console.log('Cancel Pressed'),
+                                style: 'cancel',
+                            },
+                        ],
+                        { cancelable: false }
+                    );
+                } else {
+                    console.log('Contacts permission not available');
                 }
-            } catch (error) {
-                console.error('Permission error: ', error.message);
-            }
-        };
-        // useEffect(() => {
-        //     requestContactsPermission();
-        // }, []);
-    //};
+        }
+        catch (error) {
+            console.error('Permission error: ', error.message);
+        }
+    };
 
-    const Item = React.memo(({ displayName ,id,phoneNumbers }) => {
-    const phoneNumber = phoneNumbers && phoneNumbers.length > 0 ? phoneNumbers[0].number : '';
+    const Item = React.memo(({ displayName, id, phoneNumbers }) => {
+        const phoneNumber = phoneNumbers && phoneNumbers.length > 0 ? phoneNumbers[0].number : '';
         return (
             <View style={styles.listStyle}>
-                <View style={{ flex: 1,justifyContent:'center',marginStart:10}}>
-                    <Text style={{marginBottom:6,color:'white',fontSize:18}}>{displayName}</Text>
-                    <Text style={{color:'white',fontSize:15}}>{phoneNumber}</Text>
+                <View style={{ flex: 1, justifyContent: 'center', marginStart: 10 }}>
+                    <Text style={{ marginBottom: 6, color: 'white', fontSize: 18 }}>{displayName}</Text>
+                    <Text style={{ color: 'white', fontSize: 15 }}>{phoneNumber}</Text>
                 </View>
             </View>
         );
@@ -121,7 +127,7 @@ const AppPro = () => {
             <View style={styles.listViewStyle}>
                 <FlatList
                     data={searchQuery ? filteredData : contacts}
-                    renderItem={({ item }) => <Item displayName={item.displayName} id={item.recordID} phoneNumbers={item.phoneNumbers}/>}
+                    renderItem={({ item }) => <Item displayName={item.displayName} id={item.recordID} phoneNumbers={item.phoneNumbers} />}
                     keyExtractor={item => item.recordID}
                     extraData={contacts}
                 />
@@ -131,11 +137,11 @@ const AppPro = () => {
 
     return (
         <View style={styles.container}>
-            <View style={{ flexDirection: 'row', justifyContent:'space-between', alignItems:'center'}}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={styles.title}>Contacts</Text>
-                <TouchableOpacity onPress={()=>requestContactsPermission()} style={styles.fetchButton} >
-                
-                <Text style={{ color: 'white',fontSize:15 }}>Fetch Contacts</Text>
+                <TouchableOpacity onPress={() => requestContactsPermission()} style={styles.fetchButton} >
+
+                    <Text style={{ color: 'white', fontSize: 15 }}>Fetch Contacts</Text>
                 </TouchableOpacity>
             </View>
             <TextInput
@@ -150,11 +156,11 @@ const AppPro = () => {
 }
 
 const styles = StyleSheet.create({
-    fetchButton:{
-        justifyContent:'flex-end',
+    fetchButton: {
+        justifyContent: 'flex-end',
         backgroundColor: '#00CCBE',
-        justifyContent:'center',
-        alignItems:'center',
+        justifyContent: 'center',
+        alignItems: 'center',
         width: wp('40%'),
         height: hp('5%'),
         borderRadius: 7
@@ -165,20 +171,20 @@ const styles = StyleSheet.create({
         //height: hp('70%'), // 70% of height device screen
         //width: wp('50%'),
         //height:50,
-      },
-      listStyle: {
+    },
+    listStyle: {
         borderRadius: 7,
         width: wp('89%'),
-        height:53,
+        height: 53,
         //width: 350,
         flex: 1,
         backgroundColor: '#00CCBE',
         marginBottom: 15,
         flexDirection: 'row',
-      },
-      backcolor: {
+    },
+    backcolor: {
         backgroundColor: "#D9D9D9",
-      },
+    },
     searchBar: {
         paddingHorizontal: 20,
         borderRadius: 8,
